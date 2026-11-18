@@ -1,6 +1,6 @@
 import Quickshell
-import QtQuick 
-import Quickshell.Io 
+import QtQuick
+import Quickshell.Io
 
 Scope {
   id: root
@@ -10,20 +10,18 @@ Scope {
   property string value: ""
 
   Process {
-    id: proc 
+    id: proc
     command: ["sh", "-c", root.command]
     running: true
     stdout: StdioCollector {
       onStreamFinished: root.value = this.text.trim()
-
     }
   }
 
   Timer {
     interval: root.interval
     running: true
-    repeat: true 
+    repeat: true
     onTriggered: proc.running = true
   }
 }
-

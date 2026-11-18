@@ -1,0 +1,13 @@
+import QtQuick
+
+QtObject {
+    // Temporary fallback colors; theme-switcher replaces these on the next palette apply.
+    readonly property color bg0: "#1d2021"
+    readonly property color bg1: "#282828"
+    readonly property color bg2: "#3c3836"
+    readonly property color bg3: "#504945"
+    readonly property color fg: "#ebdbb2"
+    readonly property color grey1: "#a89984"
+    readonly property color purple: "#d3869b"
+    readonly property color accent: "#d3869b"
+}
