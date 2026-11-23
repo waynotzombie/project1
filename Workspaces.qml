@@ -1,4 +1,3 @@
-
 import Quickshell
 import QtQuick
 import Quickshell.Hyprland
@@ -8,25 +7,27 @@ Rectangle {
     id: root
 
     property var palette: null
-    readonly property color bg: palette ? palette.bg1 : "#1F1D2E"
-    readonly property color fg: palette ? palette.fg : "#E0DEF4"
-    readonly property color accent: palette ? palette.accent : "#EBBCBA"
+    readonly property color fg: palette ? palette.fg : "#ebdbb2"
+    readonly property color accent: palette ? palette.accent : "#fe8019"
+    readonly property color muted: palette ? palette.grey1 : "#bdae93"
 
     implicitWidth: row.implicitWidth + 22
     implicitHeight: 25
 
     radius: height / 2
-    color: palette ? palette.bg1 : "#040d0d"
+    color: palette ? palette.bg1 : "#3c3836"
 
     layer.enabled: true
     layer.effect: DropShadow {
-        opacity: root.expanded ? 1 : 0
-        anchors.fill: root
+        width: root.width
+        height: root.height
         source: root
+
         horizontalOffset: 0
         verticalOffset: 0
         radius: 13
         samples: 16
+
         color: "#30000000"
         spread: 0.50
         transparentBorder: true
@@ -44,7 +45,7 @@ Rectangle {
                 required property var modelData
 
                 width: dot.width
-                height: 15
+                height: 16
 
                 Rectangle {
                     id: dot
@@ -52,33 +53,38 @@ Rectangle {
                     anchors.centerIn: parent
 
                     property bool active: modelData.active
+                    property bool hovered: wsHover.hovered
 
-                    width: active ? 9 : 7
-                    height: active ? 14 : 7
+                    width: active ? 10 : (hovered ? 8 : 7)
+                    height: active ? 14 : (hovered ? 8 : 7)
                     radius: 6
 
-                    color: active
-                        ? "transparent"
-                        : (root.palette ? root.palette.fg : "#fbb606")
-
-                    border.width: active ? 2 : 0
-                    border.color: root.palette
-                        ? root.palette.accent
-                        : "#f87503"
-
-                    Behavior on width {
-                        NumberAnimation {
-                            duration: 300
-                            easing.type: Easing.OutCubic
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop {
+                            position: 0
+                            color: dot.active
+                                ? Qt.lighter(root.accent, 1.2)
+                                : Qt.lighter(root.muted, 1.15)
+                        }
+                        GradientStop {
+                            position: 1
+                            color: dot.active ? root.accent : root.muted
                         }
                     }
 
-                    Behavior on color {
-                        ColorAnimation { duration: 200 }
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 280
+                            easing.type: Easing.OutBack
+                        }
                     }
 
-                    Behavior on border.width {
-                        NumberAnimation { duration: 200 }
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: 280
+                            easing.type: Easing.OutBack
+                        }
                     }
                 }
 
@@ -87,6 +93,7 @@ Rectangle {
                 }
 
                 HoverHandler {
+                    id: wsHover
                     cursorShape: Qt.PointingHandCursor
                 }
             }

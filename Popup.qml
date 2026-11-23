@@ -1,54 +1,44 @@
-
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.Mpris
-import Qt5Compat.GraphicalEffects
 import QtQuick.Controls
+import Qt5Compat.GraphicalEffects
 
 Rectangle {
     id: root
 
     property var palette: null
-    property var player: Mpris.players.values[0] ?? null
+    property var player: {
+        const players = Mpris.players.values
+        return players.find(p => p.isPlaying)
+            ?? players.find(p => (p.identity || "").toLowerCase().includes("cmus"))
+            ?? players[0]
+            ?? null
+    }
+
     property bool expanded: false
     property real trackPosition: root.player ? root.player.position : 0
     property bool hovered: false
 
-    
+    readonly property bool playing: root.player !== null && root.player.isPlaying
+    readonly property color base: palette ? palette.bg1 : "#3c3836"
+    readonly property color soft: palette ? palette.bg2 : "#504945"
+    readonly property color stroke: palette ? palette.bg3 : "#665c54"
+    readonly property color fg: palette ? palette.fg : "#ebdbb2"
+    readonly property color muted: palette ? palette.grey1 : "#bdae93"
+    readonly property color accent: palette ? palette.accent : "#fe8019"
+
     Timer {
-    interval: 100
-    repeat: true
+        interval: 100
+        repeat: true
 
-    running: root.expanded
-        && root.player !== null
-        && root.player.playbackState === MprisPlaybackState.Playing
+        running: root.expanded
+            && root.player !== null
+            && root.player.playbackState === MprisPlaybackState.Playing
 
-    onTriggered: {
-        root.player.positionChanged()
-        root.trackPosition = root.player.position
-    }
-    }
-
-
-    layer.enabled: true
-
-    layer.effect: DropShadow {
-        opacity: root.expanded ? 1 : 0
-        anchors.fill: root
-        source: root
-        horizontalOffset: 0
-        verticalOffset: 0
-        radius: 13
-        samples: 16
-        color: "#30000000"
-        spread: 0.50
-        transparentBorder: true
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 250
-                easing.type: Easing.OutBack
-            }
+        onTriggered: {
+            root.player.positionChanged()
+            root.trackPosition = root.player.position
         }
     }
 
@@ -56,16 +46,26 @@ Rectangle {
         onHoveredChanged: root.hovered = hovered
     }
 
-    readonly property color bg: palette ? palette.bg1 : "#1F1D2E"
-    readonly property color fg: palette ? palette.fg : "#E0DEF4"
-    readonly property color accent: palette ? palette.accent : "#EBBCBA"
-
-    implicitWidth: expanded ? 250 : 44
+    implicitWidth: expanded ? 250 : 90
     implicitHeight: expanded ? 175 : 25
 
-    color: palette ? palette.bg1 : "#040e0d"
+    color: root.base
     radius: expanded ? 20 : height / 2
-    clip: false
+
+    layer.enabled: true
+    layer.effect: DropShadow {
+        anchors.fill: root
+        source: root
+
+        horizontalOffset: 0
+        verticalOffset: 0
+        radius: 13
+        samples: 16
+
+        color: "#30000000"
+        spread: 0.50
+        transparentBorder: true
+    }
 
     Behavior on implicitWidth {
         NumberAnimation {
@@ -78,7 +78,6 @@ Rectangle {
         NumberAnimation {
             duration: 390
             easing.type: Easing.OutQuint
-            
         }
     }
 
@@ -90,21 +89,46 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
     }
 
-    // Collapsed music icon
-    Text {
+    // Collapsed music pill: animated equalizer while something is playing
+    Row {
         anchors.centerIn: parent
+        spacing: 8
+        visible: !root.expanded
         z: 1
 
-        visible: !root.expanded
-        text: ""
-        color: "transparent"
-        font.family: "CaskaydiaCove Nerd Font"
-        font.pixelSize: 14
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: ""
+            color: root.accent
+            font.family: "CaskaydiaCove Nerd Font"
+            font.pixelSize: 13
+        }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.expanded = true
-            cursorShape: Qt.PointingHandCursor
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            visible: root.playing
+
+            Repeater {
+                model: 4
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 2
+                    height: 5
+                    radius: 1
+                    color: root.accent
+
+                    NumberAnimation on height {
+                        from: 3
+                        to: 11
+                        duration: 420 + index * 110
+                        loops: Animation.Infinite
+                        easing.type: Easing.InOutSine
+                        running: root.playing && !root.expanded
+                    }
+                }
+            }
         }
     }
 
@@ -120,31 +144,23 @@ Rectangle {
         }
 
         z: 1
-        spacing: 12
-
+        spacing: 10
         visible: root.expanded
-        opacity: root.expanded ? 1 : 0
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 180
-            }
-        }
 
         // Album art and track information
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 11
 
             Rectangle {
                 Layout.preferredWidth: 52
                 Layout.preferredHeight: 52
-
-                radius: 8
-                color: root.palette ? root.palette.bg2 : "#26233A"
+                radius: 11
+                color: root.soft
                 clip: true
 
                 Image {
+                    id: art
                     anchors.fill: parent
                     source: root.player ? root.player.trackArtUrl : ""
                     fillMode: Image.PreserveAspectCrop
@@ -156,13 +172,13 @@ Rectangle {
                     text: ""
                     color: root.accent
                     font.pixelSize: 25
-                    visible: !root.player || !root.player.trackArtUrl
+                    visible: !root.player || !root.player.trackArtUrl || art.status !== Image.Ready
                 }
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 3
 
                 Text {
                     Layout.fillWidth: true
@@ -173,6 +189,7 @@ Rectangle {
                     color: root.fg
                     font.family: "CaskaydiaCove Nerd Font"
                     font.pixelSize: 12
+                    font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
 
@@ -184,59 +201,59 @@ Rectangle {
 
                     color: root.accent
                     font.family: "CaskaydiaCove Nerd Font"
-                    font.pixelSize: 12
+                    font.pixelSize: 11
                     elide: Text.ElideRight
                 }
             }
         }
 
-        // Seek bar and timestamps
-        
         // Seek bar
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 3
 
             Item {
                 id: seekTrack
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: 20
+                Layout.preferredHeight: 18
+
+                readonly property real fraction: root.player && root.player.length > 0
+                    ? Math.max(0, Math.min(1, root.trackPosition / root.player.length))
+                    : 0
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width
                     height: 4
-                    radius: 4
-                    color: root.palette ? root.palette.bg3 : "#504945"
+                    radius: 2
+                    color: root.stroke
                 }
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: seekTrack.width * (
-                        root.player && root.player.length > 0
-                        ? Math.max(0, Math.min(1, root.trackPosition / root.player.length))
-                        : 0
-                    )
+                    width: seekTrack.width * seekTrack.fraction
                     height: 4
-                    radius: 4
-                    color: root.palette ? root.palette.accent : "#e7c08e"
+                    radius: 2
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: Qt.darker(root.accent, 1.25) }
+                        GradientStop { position: 1; color: Qt.lighter(root.accent, 1.12) }
+                    }
+
+                    Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                 }
 
                 Rectangle {
-                    width: 10
-                    height: 10
-                    radius: 5
-                    color: root.palette ? root.palette.accent : "#e7c08e"
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: root.accent
                     anchors.verticalCenter: parent.verticalCenter
 
                     x: Math.max(0, Math.min(
                         seekTrack.width - width,
-                        seekTrack.width * (
-                            root.player && root.player.length > 0
-                            ? root.trackPosition / root.player.length
-                            : 0
-                        ) - width / 2
+                        seekTrack.width * seekTrack.fraction - width / 2
                     ))
                 }
 
@@ -270,138 +287,180 @@ Rectangle {
                 Layout.fillWidth: true
 
                 Text {
-                    text: Qt.formatTime(
-                        new Date(root.trackPosition * 1000), "m:ss"
-                    )
-                    color: root.fg
+                    text: Qt.formatTime(new Date(root.trackPosition * 1000), "m:ss")
+                    color: root.muted
+                    font.family: "CaskaydiaCove Nerd Font"
                     font.pixelSize: 10
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                }
+                Item { Layout.fillWidth: true }
 
                 Text {
                     text: root.player
-                        ? Qt.formatTime(
-                            new Date(root.player.length * 1000), "m:ss"
-                        )
+                        ? Qt.formatTime(new Date(root.player.length * 1000), "m:ss")
                         : "0:00"
-                    color: root.fg
+                    color: root.muted
+                    font.family: "CaskaydiaCove Nerd Font"
                     font.pixelSize: 10
                 }
             }
         }
 
-
         // Playback controls
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 24
+            spacing: 6
 
-            // Shuffle
-            Text {
-                text: "󰒟"
-                color: root.player && root.player.shuffle
-                    ? root.accent : root.fg
-
-                font.family: "CaskaydiaCove Nerd Font"
-                font.pixelSize: 18
+            Item {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 24
                 visible: root.player && root.player.shuffleSupported
 
-                MouseArea {
+                Rectangle {
                     anchors.fill: parent
-                    anchors.margins: -8
-                    cursorShape: Qt.PointingHandCursor
+                    radius: 7
+                    color: shuffleHover.hovered ? root.soft : root.base
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
 
-                    onClicked: {
+                Text {
+                    anchors.centerIn: parent
+                    text: "󰒟"
+                    color: root.player && root.player.shuffle ? root.accent : root.fg
+                    font.family: "CaskaydiaCove Nerd Font"
+                    font.pixelSize: 14
+                }
+
+                HoverHandler { id: shuffleHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
                         if (root.player && root.player.shuffleSupported)
                             root.player.shuffle = !root.player.shuffle
                     }
                 }
             }
 
-            // Previous
-            Text {
-                text: ""
-                color: root.fg
-                font.family: "CaskaydiaCove Nerd Font"
-                font.pixelSize: 24
+            Item {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 24
 
-                MouseArea {
+                Rectangle {
                     anchors.fill: parent
-                    onClicked: {
+                    radius: 7
+                    color: prevHover.hovered ? root.soft : root.base
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: ""
+                    color: root.player ? root.fg : root.muted
+                    font.family: "CaskaydiaCove Nerd Font"
+                    font.pixelSize: 15
+                }
+
+                HoverHandler { id: prevHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
                         if (root.player && root.player.canGoPrevious)
                             root.player.previous()
                     }
-                    cursorShape: Qt.PointingHandCursor
                 }
             }
 
-            // Play / Pause
-            Text {
-                text: root.player && root.player.isPlaying ? "" : ""
-                color: root.accent
-                font.family: "CaskaydiaCove Nerd Font"
-                font.pixelSize: 24
+            Item {
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 30
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 24
+                    height: 24
+                    radius: 12
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: Qt.lighter(root.accent, 1.15) }
+                        GradientStop { position: 1; color: root.accent }
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: root.player && root.player.isPlaying ? "" : ""
+                    color: "#1a1512"
+                    font.family: "CaskaydiaCove Nerd Font"
+                    font.pixelSize: 15
+                    z: 1
+                }
+
+                HoverHandler { id: playHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
                         if (root.player && root.player.canTogglePlaying)
                             root.player.togglePlaying()
                     }
-                    cursorShape: Qt.PointingHandCursor
                 }
             }
 
-            // Next
-            Text {
-                text: ""
-                color: root.fg
-                font.family: "CaskaydiaCove Nerd Font"
-                font.pixelSize: 24
+            Item {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 24
 
-                MouseArea {
+                Rectangle {
                     anchors.fill: parent
-                    onClicked: {
+                    radius: 7
+                    color: nextHover.hovered ? root.soft : root.base
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: ""
+                    color: root.player ? root.fg : root.muted
+                    font.family: "CaskaydiaCove Nerd Font"
+                    font.pixelSize: 15
+                }
+
+                HoverHandler { id: nextHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
                         if (root.player && root.player.canGoNext)
                             root.player.next()
                     }
-                    cursorShape: Qt.PointingHandCursor
                 }
             }
 
-            // Repeat
-            Text {
-                text: {
-                    if (!root.player || !root.player.loopSupported)
-                        return ""
-
-                    if (root.player.loopState === MprisLoopState.Track)
-                        return "↻¹"
-
-                    return "↻"
-                }
-
-                color: {
-                    if (!root.player || !root.player.loopSupported)
-                        return "transparent"
-
-                    return root.player.loopState === MprisLoopState.None
-                        ? root.fg : root.accent
-                }
-
-                font.pixelSize: 22
-                font.family: "CaskaydiaCove Nerd Font"
+            Item {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 24
                 visible: root.player && root.player.loopSupported
 
-                MouseArea {
+                Rectangle {
                     anchors.fill: parent
-                    anchors.margins: -8
-                    cursorShape: Qt.PointingHandCursor
+                    radius: 7
+                    color: loopHover.hovered ? root.soft : root.base
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
 
-                    onClicked: {
+                Text {
+                    anchors.centerIn: parent
+                    text: {
+                        if (!root.player || !root.player.loopSupported)
+                            return ""
+
+                        if (root.player.loopState === MprisLoopState.Track)
+                            return "↻¹"
+
+                        return "↻"
+                    }
+                    color: !root.player || root.player.loopState === MprisLoopState.None
+                        ? root.fg : root.accent
+                    font.pixelSize: 14
+                    font.family: "CaskaydiaCove Nerd Font"
+                }
+
+                HoverHandler { id: loopHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
                         if (!root.player || !root.player.loopSupported)
                             return
 

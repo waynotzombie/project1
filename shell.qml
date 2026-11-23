@@ -29,6 +29,13 @@ PanelWindow {
             bar.wallpaperOpen = !bar.wallpaperOpen
         }
     }
+    
+    ControlCenter { id: controlCenter; palette: theme }
+    
+    WallpaperWindow {
+        open: bar.wallpaperOpen
+        onCloseRequested: bar.wallpaperOpen = false
+    }
 
     anchors {
         top: true
@@ -36,8 +43,8 @@ PanelWindow {
         right: true
     }
 
-    implicitHeight: 300
-    exclusiveZone: 41
+    implicitHeight: 370
+    exclusiveZone: 37
     color: "transparent"
 
     // Only these widget areas receive mouse input.
@@ -63,9 +70,7 @@ PanelWindow {
         item: rightItems
     }
 
-    Region {
-        item: bar.wallpaperOpen ? wallpaperCarousel : null
-    }
+    
   }
 
     Poller {
@@ -114,45 +119,9 @@ PanelWindow {
         interval: 3000
     }
 
-    WallpaperCarousel {
-    id: wallpaperCarousel
+    Osd {}
 
-    palette: theme
-    width: 720
-    height: 205
-
-    x: clockContainer.mapToItem(parent, 0, 0).x
-       + (clockContainer.width - width) / 2
-
-    y: clockContainer.mapToItem(parent, 0, 0).y + 10
-
-    z: 20
-
-    visible: bar.wallpaperOpen || opacity > 0.01
-    enabled: bar.wallpaperOpen
-
-    opacity: bar.wallpaperOpen ? 1 : 0
-
-    transformOrigin: Item.Top
-
-    scale: bar.wallpaperOpen ? 1 : 0.05
-
-    Behavior on opacity {
-        NumberAnimation {
-            duration: 220
-            easing.type: Easing.OutCubic
-        }
-    }
-
-    Behavior on scale {
-        NumberAnimation {
-            duration: 380
-            easing.type: Easing.OutBack
-        }
-    }
-
-    onCloseRequested: bar.wallpaperOpen = false
-    }
+    
     Item {
         id: barContents
 
@@ -284,3 +253,5 @@ PanelWindow {
         }
     }
 }
+
+
